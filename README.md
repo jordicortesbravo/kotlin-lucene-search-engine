@@ -1,81 +1,115 @@
 # 🔍 Kotlin + Spring Boot In-Memory Search Engine (Lucene-Based)
 
-A high-performance, lightweight search microservice built with **Kotlin**, **Spring Boot**, and **Apache Lucene**, designed to demonstrate **clean architecture**, ultra-fast in-memory indexing, observability, and modern backend engineering practices. Ideal for read-heavy workloads requiring sub-millisecond query performance.
+A high-performance, lightweight search microservice built with **Kotlin**, **Spring Boot**, and **Apache Lucene**, designed to demonstrate **clean architecture**, **sub-millisecond in-memory search**, and **production-grade backend engineering practices**.
+
+This project showcases how a modern search service can be implemented **without** the complexity and operational cost of distributed systems like Elasticsearch or OpenSearch.
 
 ---
 
 ## 🚀 Key Features
 
-- **High-Performance Search**  
-  - Lucene index built at startup  
-  - Full-text search with relevance scoring  
-  - Optimized for in-memory operation (low latency)
+- **Ultra-Fast In-Memory Search**
+    - Lucene index built entirely at startup
+    - Sub-millisecond query latency
+    - Ideal for read-heavy workloads
 
-- **Clean REST API**  
-  - `GET /items/{id}` – Retrieve a resource  
-  - `GET /search?q=` – Lucene-powered search endpoint  
-  - JSON responses, idiomatic Kotlin design
+- **Clean REST API**
+    - `GET /properties/{id}` – Retrieve a single resource
+    - `GET /properties/search?q=` – Lucene-powered search endpoint
+    - Idiomatic Kotlin responses with minimal overhead
 
-- **Metrics & Observability**  
-  - Micrometer integration  
-  - P95/P99 search latency tracking  
-  - Prometheus/Grafana ready
+- **In-Memory Object Store (O(1) Lookup)**
+    - Full `Property` objects kept in RAM
+    - Lucene index stores only *searchable* fields
+    - Search flow:
+        1. Lucene returns only document IDs
+        2. IDs mapped to full objects via O(1) hashmap lookup
+    - Same architectural pattern used by **Elasticsearch**, **Algolia**, and **Solr** for large-scale search systems
 
-- **Benchmarking Included**  
-  - Indexing time  
-  - Average latency & percentiles  
-  - Performance reproducibility
+- **Metrics & Observability**
+    - Micrometer integration
+    - P95 / P99 latency
+    - Prometheus/Grafana ready
 
-- **Containerized & Cloud-Ready**  
-  - Lightweight Docker image  
-  - Easy horizontal scaling
+- **Benchmarking Included**
+    - Indexing performance
+    - Query percentiles
+    - Reproducible performance setup
 
-- **Unit Testing**  
-  - JUnit 5  
-  - API + Lucene index tests
+- **Containerized & Cloud-Ready**
+    - Lightweight Docker packaging
+    - Stateless → horizontal scaling is trivial
+
+- **Unit Testing**
+    - JUnit 5
+    - API + Lucene index tests
 
 ---
 
 ## 🧠 Architecture & Design Philosophy
 
-Modern search stacks (Elasticsearch/OpenSearch/NoSQL) are powerful but **complex and costly**:  
-- Sharding, routing, node-to-shard ratios often misconfigured  
-- Ongoing maintenance, scaling, monitoring required  
-- SaaS options expensive; self-managed clusters operationally heavy  
+Modern search stacks like Elasticsearch/OpenSearch are powerful but **complex and costly**:
 
-**Alternative approach:** Lucene in-memory  
-- Load entire searchable dataset into RAM  
-- Build Lucene index at startup  
-- Serve queries independently on each node  
-- Achieve **sub-millisecond latency** for read-heavy workloads  
-- **Trivial horizontal scaling**: add nodes → increase throughput  
-- No master/slave, no replication, no coordination  
+- Sharding, replication, routing, and node sizing are often misconfigured
+- Operational maintenance is non-trivial
+- SaaS versions are expensive; self-hosted clusters require expertise
+- Latency increases with network hops and cluster coordination
 
-**Optimal Use Cases:**  
-- Dataset fits in memory (tens of thousands to millions of items)  
-- Read-heavy workloads  
-- Ultra-fast search required  
-- Low operational overhead and cost  
+### ✔ Alternative: In-Memory Lucene
+
+- Load entire searchable dataset into RAM
+- Build Lucene index at startup
+- Sub-millisecond local queries
+- Zero network coordination
+- Stateless by design → scale horizontally as needed
+- In many real-world use cases, this model is faster, simpler, and far cheaper
+
+---
+
+## 🗃️ Hybrid Architecture: Indexed Fields + In-Memory Object Store
+
+This project uses the **same pattern as industrial search engines**:
+
+### 🔹 Lucene Index
+Stores *only* fields needed for search (tokens, text, numeric ranges).  
+Example: name, city, country, amenities, price, rating…
+
+### 🔹 In-Memory Object Store
+Stores the **full `Property` object** in a `ConcurrentHashMap<String, Property>`.
+
+### 🔹 Search Flow
+1. Lucene returns document IDs based on scoring
+2. Full objects are restored via O(1) lookup
+3. Response assembled with complete domain objects
+
+### ✔ Benefits
+- Smaller index → faster queries
+- Zero deserialization cost
+- No large blobs in Lucene
+- Perfect for read-heavy systems
+- Deterministic performance
+- Stateless scaling out-of-the-box
 
 ---
 
 ## 📈 What This Project Demonstrates
 
-- High-performance, production-ready backend design  
-- Clean, idiomatic Kotlin + Spring Boot architecture  
-- In-memory search with Lucene and real benchmarking  
-- Metrics-driven observability and testing  
-- Scalable, minimal-complexity systems design  
-
-A modern, minimalist alternative to distributed search stacks—fast, predictable, and operationally simple.
+- High-performance backend engineering
+- Clean and idiomatic Kotlin + Spring Boot design
+- Lucene-powered in-memory search
+- Metrics-driven observability
+- Minimal-complexity, high-throughput architecture
+- A production-inspired pattern without distributed overhead
 
 ---
 
 ## 📂 Source Code
 
-**[View the code here](repo-link)**
+**Repository:** `https://github.com/your/repository`  
+*(Replace with actual link)*
 
 ---
 
 **Author:** Jordi Cortés Bravo — Senior Software Engineer & Technical Lead  
 Spain (Remote)
+
