@@ -6,7 +6,9 @@ import com.jcortes.property.model.PropertySearchParams
 import com.jcortes.property.model.PropertySearchResponse
 import org.apache.lucene.analysis.core.SimpleAnalyzer
 import org.apache.lucene.document.*
-import org.apache.lucene.facet.*
+import org.apache.lucene.facet.FacetField
+import org.apache.lucene.facet.FacetsCollector
+import org.apache.lucene.facet.FacetsConfig
 import org.apache.lucene.facet.taxonomy.FastTaxonomyFacetCounts
 import org.apache.lucene.facet.taxonomy.TaxonomyReader
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader
@@ -169,7 +171,7 @@ class PropertyIndex {
     private fun Property.toDocument() = Document().apply {
         add(StringField("id", id.toString(), Field.Store.YES)) // Stored to retrieve later
         add(TextField("name", name, Field.Store.NO))
-        add(TextField("type", type.name, Field.Store.NO))
+        add(StringField("type", type.name, Field.Store.NO))
         add(IntPoint("pricePerNight", pricePerNight))
         add(IntPoint("maxGuests", maxGuests))
         add(IntPoint("bedrooms", bedrooms))

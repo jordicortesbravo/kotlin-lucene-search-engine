@@ -1,0 +1,19 @@
+search-engine:
+  data:
+    # Use small test dataset for integration tests
+    source: "file://test-small"
+
+  lucene:
+    ram-buffer-size-mb: 64.0  # Smaller buffer for tests
+    use-compound-file: false
+
+logging:
+  level:
+    com.jcortes: DEBUG
+    org.apache.lucene: WARN
+    org.springframework: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+server:
+  port: 0  # Random port for tests
