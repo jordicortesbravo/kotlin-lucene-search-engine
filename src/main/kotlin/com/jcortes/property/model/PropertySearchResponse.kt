@@ -4,5 +4,5 @@ data class PropertySearchResponse(
     val totalHits: Long,
     val tookMs: Long,
     val items: List<Property>,
-    val facets: List<FacetResult> = emptyList()
+    val facets: List<FacetResult>
 )

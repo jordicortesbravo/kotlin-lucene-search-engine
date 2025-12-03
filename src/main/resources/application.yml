@@ -6,7 +6,7 @@ search-engine:
     #   file://5k     -> loads from properties-5k.json
     #   file://50k    -> loads from properties-50k.json
     #   generate://1000 -> generates 1000 properties in memory
-    source: "file://5k"
+    source: "file://50k"
 
   lucene:
     # Lucene indexing configuration

@@ -1,10 +1,16 @@
 package com.jcortes.property.infrastructure
 
+import com.jcortes.property.model.FacetBucket
 import com.jcortes.property.model.Property
 import com.jcortes.property.model.PropertySearchParams
 import com.jcortes.property.model.PropertySearchResponse
 import org.apache.lucene.analysis.core.SimpleAnalyzer
 import org.apache.lucene.document.*
+import org.apache.lucene.facet.*
+import org.apache.lucene.facet.taxonomy.FastTaxonomyFacetCounts
+import org.apache.lucene.facet.taxonomy.TaxonomyReader
+import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader
+import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter
 import org.apache.lucene.index.DirectoryReader
 import org.apache.lucene.index.IndexWriter
 import org.apache.lucene.index.IndexWriterConfig
@@ -21,11 +27,21 @@ import kotlin.system.measureTimeMillis
 class PropertyIndex {
 
     private lateinit var searcher: IndexSearcher
+    private lateinit var taxonomyReader: TaxonomyReader
+    private lateinit var facetsConfig: FacetsConfig
     private val cache = ConcurrentHashMap<Long, Property>()
 
     fun buildIndex(properties: List<Property>) {
         val directory = ByteBuffersDirectory()
+        val taxonomyDirectory = ByteBuffersDirectory()
 
+        // Configure facets
+        facetsConfig = FacetsConfig().apply {
+            setMultiValued("amenities", true)
+            setHierarchical("priceRange", true)
+        }
+
+        val taxonomyWriter = DirectoryTaxonomyWriter(taxonomyDirectory)
         val writer = IndexWriter(
             directory,
             IndexWriterConfig(SimpleAnalyzer()).apply {
@@ -37,14 +53,18 @@ class PropertyIndex {
 
         properties.parallelStream().forEach { property ->
             cache[property.id] = property
-            writer.addDocument(property.toDocument())
+            val doc = property.toDocument()
+            writer.addDocument(facetsConfig.build(taxonomyWriter, doc))
         }
 
         writer.commit()
         writer.close()
+        taxonomyWriter.commit()
+        taxonomyWriter.close()
 
-        // Open read-only searcher (for this showcase we keep it simple)
+        // Open read-only searcher and taxonomy reader
         searcher = IndexSearcher(DirectoryReader.open(directory))
+        taxonomyReader = DirectoryTaxonomyReader(taxonomyDirectory)
     }
 
     fun get(id: Long): Property = cache[id] ?: error("Not found")
@@ -54,6 +74,8 @@ class PropertyIndex {
 
         val results: List<Property>
         val totalHits: Long
+        val facetResults: List<com.jcortes.property.model.FacetResult>
+
         val elapsedTime = measureTimeMillis {
             val topDocs = searcher.search(query, params.limit)
             totalHits = topDocs.totalHits.value
@@ -61,9 +83,49 @@ class PropertyIndex {
                 val doc = searcher.storedFields().document(it.doc)
                 cache[doc["id"].toLong()]
             }
+
+            // Compute facets if requested
+            facetResults = if (params.facets.isNullOrEmpty()) {
+                emptyList()
+            } else {
+                computeFacets(query, params.facets)
+            }
         }
 
-        return PropertySearchResponse(totalHits, elapsedTime, results)
+        return PropertySearchResponse(totalHits, elapsedTime, results, facetResults)
+    }
+
+    private fun computeFacets(query: Query, requestedFacets: List<String>): List<com.jcortes.property.model.FacetResult> {
+        val facetsCollector = FacetsCollector()
+        searcher.search(query, facetsCollector)
+
+        val facets = FastTaxonomyFacetCounts(taxonomyReader, facetsConfig, facetsCollector)
+
+        return requestedFacets.mapNotNull { facetName ->
+            when (facetName) {
+                "city" -> facets.getTopChildren(20, "city")?.let { luceneFacetResult ->
+                    com.jcortes.property.model.FacetResult("city", luceneFacetResult.labelValues.map { lv ->
+                        FacetBucket(lv.label, lv.value.toLong())
+                    })
+                }
+                "type" -> facets.getTopChildren(10, "type")?.let { luceneFacetResult ->
+                    com.jcortes.property.model.FacetResult("type", luceneFacetResult.labelValues.map { lv ->
+                        FacetBucket(lv.label, lv.value.toLong())
+                    })
+                }
+                "amenities" -> facets.getTopChildren(50, "amenities")?.let { luceneFacetResult ->
+                    com.jcortes.property.model.FacetResult("amenities", luceneFacetResult.labelValues.map { lv ->
+                        FacetBucket(lv.label, lv.value.toLong())
+                    })
+                }
+                "priceRange" -> facets.getTopChildren(10, "priceRange")?.let { luceneFacetResult ->
+                    com.jcortes.property.model.FacetResult("priceRange", luceneFacetResult.labelValues.map { lv ->
+                        FacetBucket(lv.label, lv.value.toLong())
+                    })
+                }
+                else -> null
+            }
+        }
     }
 
     private fun PropertySearchParams.toLuceneQuery(): Query {
@@ -121,5 +183,24 @@ class PropertyIndex {
         if (location.latitude != null && location.longitude != null) {
             add(LatLonPoint("coordinates", location.latitude, location.longitude))
         }
+
+        // Add facet fields
+        add(FacetField("city", location.city))
+        add(FacetField("type", type.name))
+
+        // Multi-valued amenities facet
+        amenities.forEach { amenity ->
+            add(FacetField("amenities", amenity))
+        }
+
+        // Price range facet (hierarchical)
+        val priceRange = when (pricePerNight) {
+            in 0..99 -> "Budget"
+            in 100..199 -> "Standard"
+            in 200..299 -> "Premium"
+            in 300..499 -> "Luxury"
+            else -> "Ultra-Luxury"
+        }
+        add(FacetField("priceRange", priceRange, pricePerNight.toString()))
     }
 }
