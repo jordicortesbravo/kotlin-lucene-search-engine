@@ -1,7 +1,8 @@
 package com.jcortes.property.model
 
 data class PropertySearchResponse(
-    val total: Int,
+    val totalHits: Long,
     val tookMs: Long,
-    val items: List<Property>
+    val items: List<Property>,
+    val facets: List<FacetResult> = emptyList()
 )

@@ -1,0 +1,24 @@
+search-engine:
+  data:
+    # Data source configuration
+    # Options: file://5k, file://50k, generate://[number]
+    # Examples:
+    #   file://5k     -> loads from properties-5k.json
+    #   file://50k    -> loads from properties-50k.json
+    #   generate://1000 -> generates 1000 properties in memory
+    source: "file://5k"
+
+  lucene:
+    # Lucene indexing configuration
+    ram-buffer-size-mb: 1024.0
+    use-compound-file: false
+
+logging:
+  level:
+    com.jcortes: INFO
+    org.apache.lucene: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+server:
+  port: 8080

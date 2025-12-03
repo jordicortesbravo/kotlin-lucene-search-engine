@@ -17,7 +17,6 @@ data class Property(
 
 data class Location(
     val city: String,
-    val country: String,
     val latitude: Double?,
     val longitude: Double?
 )
